@@ -1,60 +1,112 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class Rocket : MonoBehaviour {
 
-    [SerializeField] float rocketSpeed = 10;
-    [SerializeField] AudioSource thrustSound;
-    Quaternion objectRotation;
-    Rigidbody rb;
+    [SerializeField] float rcsThrust = 150f;
+    [SerializeField] float mainThrust = 300f;
+    [SerializeField] AudioClip mainEngineSound;
+    [SerializeField] AudioClip deathSound;
+    [SerializeField] AudioClip levelSound;
 
-    // Use this for initialization
+    Rigidbody rb;
+    AudioSource myAudioSource;
+
+    enum State { Alive, Dying, Transcending}
+    State currentState = State.Alive;
+
     void Start () {
         rb = GetComponent<Rigidbody>();
-        thrustSound = GetComponent<AudioSource>();
+        myAudioSource = GetComponent<AudioSource>();
     }
 	
-	// Update is called once per frame
 	void Update () {
-        ProcessInput();
+        if(currentState == State.Alive)
+        {
+            RespondToThrustInput();
+            RespondToRotateInput();
+        }
 }
 
-    void ProcessInput()
+    private void RespondToThrustInput()
     {
         if (Input.GetKey(KeyCode.Space))
         {
-            rb.AddRelativeForce(Vector3.up);
-            if (!thrustSound.isPlaying)
-            {
-                thrustSound.Play();
-            }
+            ApplyThrust();
         }
         else
         {
-            thrustSound.Stop();
+            myAudioSource.Stop();
         }
-        if (Input.GetKeyUp(KeyCode.Space))
+    }
+
+    private void ApplyThrust()
+    {
+        rb.AddRelativeForce(Vector3.up * mainThrust * Time.deltaTime);
+        if (!myAudioSource.isPlaying)
         {
-            rb.AddRelativeForce(Vector3.up);
-            thrustSound.Stop();
+            myAudioSource.PlayOneShot(mainEngineSound);
         }
+    }
+
+    void RespondToRotateInput()
+    {
+        rb.freezeRotation = true;
+        float rotationThisFrame = rcsThrust * Time.deltaTime;
         if (Input.GetKey(KeyCode.A))
         {
-            transform.Rotate(Vector3.forward);
+            transform.Rotate(Vector3.forward * rotationThisFrame);
         }
         if (Input.GetKey(KeyCode.D))
         {
-            transform.Rotate(-Vector3.forward);
+            transform.Rotate(-Vector3.forward * rotationThisFrame);
         }
-        if (Input.GetKey(KeyCode.W))
+
+        rb.freezeRotation = false;
+    }
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        if (currentState != State.Alive) { return; }
+
+        switch (collision.gameObject.tag)
         {
-            transform.Rotate(Vector3.right);
+            case "Friendly":
+                // do nothing
+                break;
+            case "Finish ":
+                StartLevelSequence();
+                break;
+            default:
+                StartDeathSequence();
+                break;
         }
-        if (Input.GetKey(KeyCode.S))
-        {
-            transform.Rotate(-Vector3.right);
-        }
+    }
+
+    private void StartLevelSequence()
+    {
+        currentState = State.Transcending;
+        myAudioSource.Stop();
+        myAudioSource.PlayOneShot(levelSound);
+        Invoke("LoadNextScene", 1f);
+    }
+
+    private void StartDeathSequence()
+    {
+        currentState = State.Dying;
+        myAudioSource.Stop();
+        myAudioSource.PlayOneShot(deathSound);
+        Invoke("LoadFirstScene", 1f);
+    }
+
+    private void LoadNextScene()
+    {
+        SceneManager.LoadScene(1);
+    }
+
+    private void LoadFirstScene()
+    {
+        SceneManager.LoadScene(0);
     }
 }
