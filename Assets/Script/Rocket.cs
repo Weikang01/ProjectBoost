@@ -4,30 +4,43 @@ using UnityEngine.SceneManagement;
 
 public class Rocket : MonoBehaviour {
 
+    [Header("Power System")]
     [SerializeField] float rcsThrust = 150f;
     [SerializeField] float mainThrust = 300f;
+
+    [Header("Sound Effect")]
     [SerializeField] AudioClip mainEngineSound;
     [SerializeField] AudioClip deathSound;
     [SerializeField] AudioClip levelSound;
 
+    [Header("Partical System")]
+    [SerializeField] ParticleSystem rocketJetParticles;
+    [SerializeField] ParticleSystem explosionParticles;
+    [SerializeField] ParticleSystem successParticles;
+
     Rigidbody rb;
     AudioSource myAudioSource;
+    bool collisionAreEnabled = true;
 
-    enum State { Alive, Dying, Transcending}
+    enum State { Alive, Dying, Transcending }
     State currentState = State.Alive;
 
-    void Start () {
+    void Start() {
         rb = GetComponent<Rigidbody>();
         myAudioSource = GetComponent<AudioSource>();
     }
-	
-	void Update () {
-        if(currentState == State.Alive)
+
+    void Update() {
+        if (currentState == State.Alive)
         {
             RespondToThrustInput();
             RespondToRotateInput();
+            if (Debug.isDebugBuild)
+            {
+                RespondToDebugKeys();
+            }
         }
-}
+    }
 
     private void RespondToThrustInput()
     {
@@ -38,6 +51,7 @@ public class Rocket : MonoBehaviour {
         else
         {
             myAudioSource.Stop();
+            rocketJetParticles.Stop();
         }
     }
 
@@ -48,6 +62,7 @@ public class Rocket : MonoBehaviour {
         {
             myAudioSource.PlayOneShot(mainEngineSound);
         }
+        rocketJetParticles.Play();
     }
 
     void RespondToRotateInput()
@@ -68,7 +83,7 @@ public class Rocket : MonoBehaviour {
 
     private void OnCollisionEnter(Collision collision)
     {
-        if (currentState != State.Alive) { return; }
+        if (currentState != State.Alive || !collisionAreEnabled) { return; }
 
         switch (collision.gameObject.tag)
         {
@@ -88,6 +103,8 @@ public class Rocket : MonoBehaviour {
     {
         currentState = State.Transcending;
         myAudioSource.Stop();
+        rocketJetParticles.Stop();
+        successParticles.Play();
         myAudioSource.PlayOneShot(levelSound);
         Invoke("LoadNextScene", 1f);
     }
@@ -96,13 +113,36 @@ public class Rocket : MonoBehaviour {
     {
         currentState = State.Dying;
         myAudioSource.Stop();
+        rocketJetParticles.Stop();
+        explosionParticles.Play();
         myAudioSource.PlayOneShot(deathSound);
         Invoke("LoadFirstScene", 1f);
     }
 
+    private void RespondToDebugKeys()
+    {
+        if (Input.GetKeyDown(KeyCode.L))
+        {
+            LoadNextScene();
+        }
+        if (Input.GetKeyDown(KeyCode.C))
+        {
+            collisionAreEnabled = !collisionAreEnabled;
+        }
+    }
+
     private void LoadNextScene()
     {
-        SceneManager.LoadScene(1);
+        int currentSceneIndex = SceneManager.GetActiveScene().buildIndex;
+        int sceneCount = SceneManager.sceneCountInBuildSettings;
+        if(currentSceneIndex == sceneCount - 1)
+        {
+            SceneManager.LoadScene(0);
+        } else if(currentSceneIndex < sceneCount - 1)
+        {
+            SceneManager.LoadScene(currentSceneIndex + 1);
+        }
+
     }
 
     private void LoadFirstScene()
