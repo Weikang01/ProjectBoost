@@ -67,22 +67,20 @@ public class Rocket : MonoBehaviour {
 
     void RespondToRotateInput()
     {
-        float rotationThisFrame = rcsThrust * Time.deltaTime;
-
         if (Input.GetKey(KeyCode.A))
         {
-            RotateManually(rotationThisFrame);
+            RotateManually(rcsThrust * Time.deltaTime);
         }
         if (Input.GetKey(KeyCode.D))
         {
-            RotateManually(-rotationThisFrame);
+            RotateManually(-rcsThrust * Time.deltaTime);
         }
     }
 
-    private void RotateManually(float rotationThisFrame)
+    private void RotateManually(float rcsThrust)
     {
         rb.freezeRotation = true;
-        transform.Rotate(Vector3.forward * rotationThisFrame);
+        transform.Rotate(Vector3.forward * rcsThrust);
         rb.freezeRotation = false;
     }
 
